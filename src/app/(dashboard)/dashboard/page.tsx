@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, Category } from "@prisma/client";
 import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 
@@ -65,13 +65,15 @@ async function getDashboardData(orgId: string) {
     ]);
 
   // Enrich categories
-  const catIds = categoryBreakdown.map((c) => c.categoryId);
+  type CategoryEntry = (typeof categoryBreakdown)[number];
+
+  const catIds = categoryBreakdown.map((c: CategoryEntry) => c.categoryId);
   const cats = catIds.length
     ? await db.category.findMany({ where: { id: { in: catIds } } })
     : [];
-  const catMap = Object.fromEntries(cats.map((c) => [c.id, c]));
+  const catMap = Object.fromEntries(cats.map((c: Category) => [c.id, c]));
 
-  const enrichedCategories = categoryBreakdown.map((c) => ({
+  const enrichedCategories = categoryBreakdown.map((c: CategoryEntry) => ({
     categoryId: c.categoryId,
     categoryName: catMap[c.categoryId]?.name ?? "Unknown",
     color: catMap[c.categoryId]?.color ?? "#6366f1",
