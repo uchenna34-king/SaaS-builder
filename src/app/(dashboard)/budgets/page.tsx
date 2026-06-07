@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
+import type { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { BudgetsClient } from "@/components/budgets/budgets-client";
+
+type BudgetWithCategory = Prisma.BudgetGetPayload<{
+  include: { category: true };
+}>;
 
 export const metadata: Metadata = { title: "Budgets" };
 
@@ -29,7 +34,7 @@ export default async function BudgetsPage() {
   ]);
 
   const budgetsWithSpent = await Promise.all(
-    budgets.map(async (b) => {
+    budgets.map(async (b: BudgetWithCategory) => {
       const agg = await db.expense.aggregate({
         where: {
           organizationId: orgId,

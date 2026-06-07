@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
+import type { Prisma } from "@prisma/client";
 import { Suspense } from "react";
 import { auth } from "@/lib/auth";
+
+type BudgetWithCategory = Prisma.BudgetGetPayload<{
+  include: { category: true };
+}>;
 import { db } from "@/lib/db";
 import { DashboardStats } from "@/components/dashboard/stats-cards";
 import { SpendingChart } from "@/components/dashboard/spending-chart";
@@ -95,7 +100,7 @@ async function getDashboardData(orgId: string) {
 
   // Budget utilization
   const budgetsWithSpent = await Promise.all(
-    budgets.map(async (b) => {
+    budgets.map(async (b: BudgetWithCategory) => {
       const agg = await db.expense.aggregate({
         where: {
           organizationId: orgId,
