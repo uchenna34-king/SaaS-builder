@@ -1,70 +1,93 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { formatCurrency, percentChange } from "@/lib/utils";
-import { TrendingUp, TrendingDown, DollarSign, Receipt, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, CalendarDays, Sigma } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Props {
-  totalExpenses: number;
+  totalExpenses:     number;
   totalExpensesCount: number;
-  monthlyExpenses: number;
+  monthlyExpenses:   number;
   prevMonthExpenses: number;
 }
 
 export function DashboardStats({ totalExpenses, totalExpensesCount, monthlyExpenses, prevMonthExpenses }: Props) {
-  const change = percentChange(monthlyExpenses, prevMonthExpenses);
-  const isUp = change >= 0;
+  const delta   = percentChange(monthlyExpenses, prevMonthExpenses);
+  const isUp    = delta >= 0;
+  const avgTx   = totalExpensesCount > 0 ? totalExpenses / totalExpensesCount : 0;
 
-  const stats = [
+  const cards = [
     {
-      title: "Total Expenses (All Time)",
-      value: formatCurrency(totalExpenses),
-      sub: `${totalExpensesCount} transactions`,
-      icon: DollarSign,
-      iconBg: "bg-blue-100 text-blue-600",
+      label:   "All-time spend",
+      value:   formatCurrency(totalExpenses),
+      sub:     `${totalExpensesCount.toLocaleString()} transactions`,
+      icon:    DollarSign,
+      gradient: "from-indigo-500 to-indigo-600",
+      ring:    "ring-indigo-100",
     },
     {
-      title: "This Month",
-      value: formatCurrency(monthlyExpenses),
-      sub: (
-        <span className={`flex items-center gap-1 text-xs ${isUp ? "text-red-500" : "text-emerald-500"}`}>
-          {isUp ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-          {Math.abs(change)}% vs last month
-        </span>
-      ),
-      icon: isUp ? TrendingUp : TrendingDown,
-      iconBg: isUp ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600",
+      label:   "This month",
+      value:   formatCurrency(monthlyExpenses),
+      sub:     null,
+      delta,
+      isUp,
+      icon:    CalendarDays,
+      gradient: isUp ? "from-rose-500 to-rose-600" : "from-emerald-500 to-emerald-600",
+      ring:    isUp ? "ring-rose-100" : "ring-emerald-100",
     },
     {
-      title: "Last Month",
-      value: formatCurrency(prevMonthExpenses),
-      sub: "Previous period",
-      icon: Receipt,
-      iconBg: "bg-purple-100 text-purple-600",
+      label:   "Last month",
+      value:   formatCurrency(prevMonthExpenses),
+      sub:     "Previous period",
+      icon:    TrendingUp,
+      gradient: "from-violet-500 to-violet-600",
+      ring:    "ring-violet-100",
     },
     {
-      title: "Avg. per Transaction",
-      value: totalExpensesCount > 0 ? formatCurrency(totalExpenses / totalExpensesCount) : "$0.00",
-      sub: "Across all time",
-      icon: DollarSign,
-      iconBg: "bg-amber-100 text-amber-600",
+      label:   "Avg. per expense",
+      value:   formatCurrency(avgTx),
+      sub:     "Across all time",
+      icon:    Sigma,
+      gradient: "from-amber-500 to-amber-600",
+      ring:    "ring-amber-100",
     },
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {stats.map((s) => (
-        <Card key={s.title}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{s.title}</CardTitle>
-            <div className={`h-9 w-9 rounded-full flex items-center justify-center ${s.iconBg}`}>
-              <s.icon className="h-4 w-4" />
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {cards.map((c) => (
+        <div
+          key={c.label}
+          className="bg-white border border-slate-100 rounded-2xl p-5 shadow-card hover:shadow-card-md transition-shadow duration-200"
+        >
+          <div className="flex items-start justify-between mb-4">
+            <p className="text-[13px] font-medium text-slate-500">{c.label}</p>
+            <div className={cn(
+              "h-9 w-9 rounded-xl bg-gradient-to-br flex items-center justify-center ring-4",
+              c.gradient,
+              c.ring
+            )}>
+              <c.icon className="h-4 w-4 text-white" strokeWidth={2} />
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{s.value}</div>
-            <div className="text-xs text-muted-foreground mt-1">{s.sub}</div>
-          </CardContent>
-        </Card>
+          </div>
+
+          <p className="text-2xl font-bold text-slate-900 tracking-tight">{c.value}</p>
+
+          <div className="mt-1.5 text-xs">
+            {c.delta !== undefined ? (
+              <span className={cn(
+                "inline-flex items-center gap-0.5 font-medium",
+                c.isUp ? "text-rose-500" : "text-emerald-600"
+              )}>
+                {c.isUp
+                  ? <ArrowUpRight className="h-3.5 w-3.5" />
+                  : <ArrowDownRight className="h-3.5 w-3.5" />
+                }
+                {Math.abs(c.delta)}% vs last month
+              </span>
+            ) : (
+              <span className="text-slate-400">{c.sub}</span>
+            )}
+          </div>
+        </div>
       ))}
     </div>
   );
