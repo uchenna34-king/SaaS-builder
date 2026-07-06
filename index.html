@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FarmPadi — Farm Records &amp; Money, Made Simple</title>
+<title>FarmTrack — Farm Records &amp; Money, Made Simple</title>
+<script>try{var t=localStorage.getItem('farmtrack-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <style>
   /* ============ Design tokens ============ */
   :root {
@@ -381,9 +382,10 @@
             <path d="M12 21V9" stroke="#123d22" stroke-width="1.6" stroke-linecap="round"/>
           </svg>
         </span>
-        FarmPadi
+        FarmTrack
       </div>
       <div class="nav-actions">
+        <a class="theme-toggle" href="login.html" style="text-decoration:none">Log in</a>
         <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙 Dark</button>
       </div>
     </nav>
@@ -394,11 +396,11 @@
         <h1>Your farm’s money, <em>clear as daylight.</em></h1>
         <p class="lede">
           Track every bag of maize, every crate of tomatoes, and every naira —
-          from Dawanau to Mile 12. FarmPadi keeps your records so you can farm,
+          from Dawanau to Mile 12. FarmTrack keeps your records so you can farm,
           sell, and grow with confidence.
         </p>
         <div class="hero-cta">
-          <a class="btn btn-gold" href="#dashboard">Open my dashboard →</a>
+          <a class="btn btn-gold" href="app/index.html">Open my dashboard →</a>
           <a class="btn btn-ghost" href="#features">See how it works</a>
         </div>
         <div class="hero-proof">
@@ -543,7 +545,7 @@
   <!-- ============ Features ============ -->
   <section id="features">
     <div class="section-head">
-      <span class="eyebrow">Why FarmPadi</span>
+      <span class="eyebrow">Why FarmTrack</span>
       <h2>Made for the way you already farm</h2>
       <p>No accounting jargon. No oyinbo spreadsheets. Just your crops, your sales, and your profit — in plain language.</p>
     </div>
@@ -572,12 +574,12 @@
       <h2>Start your farm records today.</h2>
       <p>Free for your first season. No card, no wahala — just your phone number.</p>
     </div>
-    <a class="btn btn-gold" href="#dashboard">Get started free →</a>
+    <a class="btn btn-gold" href="login.html">Get started free →</a>
   </div>
 </main>
 
 <footer class="colophon">
-  <strong>FarmPadi</strong> · Farm records &amp; money for Nigerian farmers · Lagos • Kano • Enugu
+  <strong>FarmTrack</strong> · Farm records &amp; money for Nigerian farmers · Lagos • Kano • Enugu
 </footer>
 
 <script>
@@ -594,7 +596,9 @@
   }
   function paintToggle() { toggle.textContent = currentDark() ? "☀️ Light" : "🌙 Dark"; }
   toggle.addEventListener("click", () => {
-    root.setAttribute("data-theme", currentDark() ? "light" : "dark");
+    const next = currentDark() ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("farmtrack-theme", next); } catch (e) { /* private mode */ }
     paintToggle(); drawCharts();
   });
   systemDark.addEventListener("change", () => { paintToggle(); drawCharts(); });
@@ -813,7 +817,7 @@
       `<span class="f-amt ${a.dir}">${a.amt >= 0 ? "+" : "−"}${NGN(Math.abs(a.amt))}</span>`;
     return li;
   }
-  const stored = JSON.parse(localStorage.getItem("farmpadi-sales") || "[]");
+  const stored = JSON.parse(localStorage.getItem("farmtrack-landing-sales") || "[]");
   [...stored, ...activity].slice(0, 6).forEach((a) => feed.appendChild(feedItem(a)));
 
   /* ---------- Quick-add form ---------- */
@@ -832,7 +836,7 @@
       amt: amt, dir: "in",
     };
     stored.unshift(entry);
-    localStorage.setItem("farmpadi-sales", JSON.stringify(stored.slice(0, 10)));
+    localStorage.setItem("farmtrack-landing-sales", JSON.stringify(stored.slice(0, 10)));
     feed.insertBefore(feedItem(entry), feed.firstChild);
     if (feed.children.length > 6) feed.removeChild(feed.lastChild);
     form.reset();

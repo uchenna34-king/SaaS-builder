@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings · FarmTrack</title>
+<script>try{var t=localStorage.getItem('farmtrack-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="stylesheet" href="../assets/farmtrack.css">
+</head>
+<body class="app-body">
+<aside class="sidebar"></aside>
+
+<div class="app-main">
+  <header class="topbar">
+    <div>
+      <h1>Settings</h1>
+      <p class="crumb">Your farm, your language, your data</p>
+    </div>
+    <div class="top-actions">
+      <button class="theme-toggle" aria-label="Toggle dark mode">🌙 Dark</button>
+    </div>
+  </header>
+
+  <div class="page">
+    <div class="grid-2-even">
+      <div class="card">
+        <div class="card-head">
+          <h3>Farm profile</h3>
+          <span class="sub">Shows on your reports and statements</span>
+        </div>
+        <form class="quick-form" id="profileForm" autocomplete="off" style="margin-top:10px">
+          <div class="form-row">
+            <label>Your name
+              <input id="pOwner" type="text" placeholder="e.g. Mallam Ibrahim" required>
+            </label>
+            <label>Phone number
+              <input id="pPhone" type="tel" placeholder="e.g. 0803 123 4567">
+            </label>
+          </div>
+          <label>Farm name &amp; location
+            <input id="pFarm" type="text" placeholder="e.g. Gidan Noma Farm, Kano" required>
+          </label>
+          <div class="form-row">
+            <label>State
+              <select id="pState">
+                <option>Kano</option><option>Kaduna</option><option>Katsina</option>
+                <option>Benue</option><option>Niger</option><option>Oyo</option>
+                <option>Ogun</option><option>Kebbi</option><option>Plateau</option>
+                <option>Enugu</option><option>Ebonyi</option><option>Cross River</option>
+                <option>Lagos</option><option>FCT Abuja</option><option>Other</option>
+              </select>
+            </label>
+            <label>Main market
+              <input id="pMarket" type="text" placeholder="e.g. Dawanau Market">
+            </label>
+          </div>
+          <button class="btn btn-brand" type="submit">Save profile</button>
+        </form>
+      </div>
+
+      <div style="display:grid;gap:18px;align-content:start">
+        <div class="card">
+          <div class="card-head">
+            <h3>Language</h3>
+            <span class="sub">App language and voice entry</span>
+          </div>
+          <div class="chip-row" id="langChips" style="margin-top:10px"></div>
+          <p class="muted" style="font-size:12.5px;margin-top:12px">
+            Voice entry lets you say <em>“Na sayar da buhun masara guda takwas”</em> — and FarmTrack records the sale.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>Appearance</h3>
+            <span class="sub">Follows your phone unless you choose</span>
+          </div>
+          <div class="chip-row" id="themeChips" style="margin-top:10px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Your data</h3>
+        <span class="sub">Stored on this device — you own it</span>
+      </div>
+      <p class="muted" style="font-size:14px;margin:6px 0 14px">
+        Everything you record lives on this phone and syncs when you have network.
+        You can take a copy anytime, or clear your entries and start the season fresh
+        (the demo farm data stays).
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <button class="btn btn-quiet" id="exportBtn">⬇️ Download my records (JSON)</button>
+        <button class="btn btn-danger" id="resetBtn">🗑 Clear my entries</button>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:space-between">
+      <div>
+        <h3 style="font-size:16.5px;font-weight:800">FarmTrack</h3>
+        <p class="muted" style="font-size:13.5px">Farm records &amp; money for Nigerian farmers · v0.2 demo build</p>
+      </div>
+      <a class="btn btn-gold btn-sm" href="../index.html">Visit the FarmTrack site →</a>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/farmtrack.js"></script>
+<script>
+(function () {
+  "use strict";
+  FT.shell("settings");
+  FT.initTheme();
+
+  /* ---- Profile ---- */
+  const defaults = { owner: "Mallam Ibrahim", phone: "", farm: "Gidan Noma Farm, Kano", state: "Kano", market: "Dawanau Market" };
+  const prof = Object.assign({}, defaults, JSON.parse(localStorage.getItem(FT.LS.profile) || "{}"));
+  document.getElementById("pOwner").value = prof.owner;
+  document.getElementById("pPhone").value = prof.phone;
+  document.getElementById("pFarm").value = prof.farm;
+  document.getElementById("pState").value = prof.state;
+  document.getElementById("pMarket").value = prof.market;
+  document.getElementById("profileForm").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const next = {
+      owner: document.getElementById("pOwner").value.trim() || defaults.owner,
+      phone: document.getElementById("pPhone").value.trim(),
+      farm: document.getElementById("pFarm").value.trim() || defaults.farm,
+      state: document.getElementById("pState").value,
+      market: document.getElementById("pMarket").value.trim(),
+    };
+    localStorage.setItem(FT.LS.profile, JSON.stringify(next));
+    FT.shell("settings");   /* refresh sidebar user card */
+    FT.toast("✓ Profile saved");
+  });
+
+  /* ---- Language chips ---- */
+  const langs = ["English", "Pidgin", "Hausa", "Yorùbá", "Igbo"];
+  const langRow = document.getElementById("langChips");
+  function paintLangs() {
+    const cur = localStorage.getItem(FT.LS.lang) || "English";
+    langRow.innerHTML = "";
+    langs.forEach((l) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip" + (l === cur ? " active" : "");
+      b.textContent = l;
+      b.addEventListener("click", () => {
+        localStorage.setItem(FT.LS.lang, l);
+        paintLangs();
+        FT.toast(l === "English" ? "✓ Language set to English"
+          : l === "Pidgin" ? "✓ We don set am — Pidgin e be"
+          : "✓ Language set to " + l + " (translation coming in beta)");
+      });
+      langRow.appendChild(b);
+    });
+  }
+  paintLangs();
+
+  /* ---- Theme chips ---- */
+  const themeRow = document.getElementById("themeChips");
+  function paintThemes() {
+    const stored = localStorage.getItem(FT.LS.theme);
+    const cur = stored || "system";
+    themeRow.innerHTML = "";
+    [["system", "🪄 Follow phone"], ["light", "☀️ Light"], ["dark", "🌙 Dark"]].forEach(([id, label]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip" + (id === cur ? " active" : "");
+      b.textContent = label;
+      b.addEventListener("click", () => { FT.setTheme(id); paintThemes(); });
+      themeRow.appendChild(b);
+    });
+  }
+  paintThemes();
+  window.addEventListener("ft:theme", paintThemes);
+
+  /* ---- Data ---- */
+  document.getElementById("exportBtn").addEventListener("click", () => {
+    const data = {
+      exported: new Date().toISOString(),
+      profile: prof,
+      sales: FT.getSales(),
+      expenses: FT.getExpenses(),
+      inventory: FT.getInventory(),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "farmtrack-records-2026.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    FT.toast("✓ Records downloaded");
+  });
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    if (confirm("Clear everything you recorded on this device? The demo farm data stays.")) {
+      FT.resetData();
+      FT.toast("✓ Your entries were cleared");
+      setTimeout(() => location.reload(), 900);
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventory · FarmTrack</title>
+<script>try{var t=localStorage.getItem('farmtrack-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="stylesheet" href="../assets/farmtrack.css">
+</head>
+<body class="app-body">
+<aside class="sidebar"></aside>
+
+<div class="app-main">
+  <header class="topbar">
+    <div>
+      <h1>Store inventory</h1>
+      <p class="crumb">Everything in your store, barn and pen</p>
+    </div>
+    <div class="top-actions">
+      <button class="theme-toggle" aria-label="Toggle dark mode">🌙 Dark</button>
+    </div>
+  </header>
+
+  <div class="page">
+    <div class="tiles">
+      <div class="tile">
+        <div class="tile-accent" style="background:var(--series-1)"></div>
+        <div class="t-label">Total value</div>
+        <div class="t-value" id="tVal">—</div>
+        <div class="t-delta">at today’s prices</div>
+      </div>
+      <div class="tile">
+        <div class="tile-accent" style="background:var(--series-2)"></div>
+        <div class="t-label">Items tracked</div>
+        <div class="t-value" id="tItems">—</div>
+        <div class="t-delta">across all categories</div>
+      </div>
+      <div class="tile">
+        <div class="tile-accent" style="background:var(--gold)"></div>
+        <div class="t-label">Running low</div>
+        <div class="t-value" id="tLow">—</div>
+        <div class="t-delta">restock before market day</div>
+      </div>
+      <div class="tile">
+        <div class="tile-accent" style="background:var(--series-4)"></div>
+        <div class="t-label">Out of stock</div>
+        <div class="t-value" id="tOut">—</div>
+        <div class="t-delta">needs attention</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>All items</h3>
+        <input class="search-input" id="invSearch" type="search" placeholder="Search items…">
+      </div>
+      <div class="chip-row" id="catChips" style="margin:8px 0 4px"></div>
+      <div class="tbl-scroll">
+        <table class="inv-table">
+          <thead>
+            <tr>
+              <th>Item</th><th>Category</th><th class="num">Qty</th>
+              <th class="num">Unit price</th><th class="num">Value</th>
+              <th>Status</th><th>Adjust</th>
+            </tr>
+          </thead>
+          <tbody id="invBody"></tbody>
+        </table>
+      </div>
+      <div class="empty-note" id="invEmpty" hidden>No items match your search.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Add new item</h3>
+        <span class="sub">Anything you store, grow or rear</span>
+      </div>
+      <form class="quick-form" id="addForm" autocomplete="off">
+        <div class="form-row">
+          <label>Item name
+            <input id="aName" type="text" placeholder="e.g. Groundnuts" required>
+          </label>
+          <label>Category
+            <select id="aCat">
+              <option>Grains</option><option>Vegetables</option><option>Tubers</option>
+              <option>Livestock</option><option>Inputs</option><option>Other</option>
+            </select>
+          </label>
+        </div>
+        <div class="form-row">
+          <label>Unit
+            <input id="aUnit" type="text" placeholder="e.g. bag (50kg)" required>
+          </label>
+          <label>Emoji (optional)
+            <input id="aEmoji" type="text" maxlength="4" placeholder="📦">
+          </label>
+        </div>
+        <div class="form-row">
+          <label>Quantity in store
+            <input id="aQty" type="number" min="0" value="0" required>
+          </label>
+          <label>Unit price (₦)
+            <input id="aPrice" type="number" min="0" placeholder="e.g. 35000" required>
+          </label>
+        </div>
+        <button class="btn btn-brand" type="submit">＋ Add to inventory</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/farmtrack.js"></script>
+<script>
+(function () {
+  "use strict";
+  FT.shell("inventory");
+  FT.initTheme();
+
+  let inventory = FT.getInventory();
+  let activeCat = "All";
+  let query = "";
+
+  function paintTiles() {
+    document.getElementById("tVal").textContent = FT.NGNshort(inventory.reduce((s, i) => s + i.qty * i.price, 0));
+    document.getElementById("tItems").textContent = inventory.length;
+    document.getElementById("tLow").textContent = inventory.filter((i) => i.qty > 0 && i.qty <= 6).length;
+    document.getElementById("tOut").textContent = inventory.filter((i) => i.qty === 0).length;
+  }
+
+  function paintChips() {
+    const cats = ["All", ...new Set(inventory.map((i) => i.cat))];
+    const row = document.getElementById("catChips");
+    row.innerHTML = "";
+    cats.forEach((c) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip" + (c === activeCat ? " active" : "");
+      b.textContent = c;
+      b.addEventListener("click", () => { activeCat = c; paintChips(); paintTable(); });
+      row.appendChild(b);
+    });
+  }
+
+  function paintTable() {
+    const body = document.getElementById("invBody");
+    body.innerHTML = "";
+    const rows = inventory.filter((i) =>
+      (activeCat === "All" || i.cat === activeCat) &&
+      i.name.toLowerCase().includes(query));
+    document.getElementById("invEmpty").hidden = rows.length > 0;
+    rows.forEach((it) => {
+      const status = it.qty === 0 ? ["stock-out", "Out of stock"]
+                   : it.qty <= 6  ? ["stock-low", "Running low"]
+                   : ["stock-ok", "In stock"];
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        `<td><span class="inv-item"><span class="inv-emoji">${it.emoji}</span>` +
+        `<span>${it.name}<br><span class="inv-sub">${it.unit}</span></span></span></td>` +
+        `<td class="muted" style="font-size:13px">${it.cat}</td>` +
+        `<td class="num">${it.qty}</td>` +
+        `<td class="num">${FT.NGN(it.price)}</td>` +
+        `<td class="num">${FT.NGN(it.qty * it.price)}</td>` +
+        `<td><span class="stock-pill ${status[0]}">${status[1]}</span></td>`;
+      const adj = document.createElement("td");
+      const btns = document.createElement("span");
+      btns.className = "qty-btns";
+      [["−", -1], ["＋", +1]].forEach(([sym, delta]) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "qty-btn";
+        b.textContent = sym;
+        b.setAttribute("aria-label", (delta > 0 ? "Increase " : "Decrease ") + it.name);
+        b.addEventListener("click", () => {
+          it.qty = Math.max(0, it.qty + delta);
+          FT.saveInventory(inventory);
+          paintTiles(); paintTable();
+        });
+        btns.appendChild(b);
+      });
+      adj.appendChild(btns);
+      tr.appendChild(adj);
+      body.appendChild(tr);
+    });
+  }
+
+  document.getElementById("invSearch").addEventListener("input", (e) => {
+    query = e.target.value.trim().toLowerCase();
+    paintTable();
+  });
+
+  document.getElementById("addForm").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const item = {
+      emoji: document.getElementById("aEmoji").value.trim() || "📦",
+      name: document.getElementById("aName").value.trim(),
+      cat: document.getElementById("aCat").value,
+      unit: document.getElementById("aUnit").value.trim(),
+      qty: Number(document.getElementById("aQty").value) || 0,
+      price: Number(document.getElementById("aPrice").value) || 0,
+    };
+    inventory.unshift(item);
+    FT.saveInventory(inventory);
+    ev.target.reset();
+    activeCat = "All"; query = "";
+    document.getElementById("invSearch").value = "";
+    paintTiles(); paintChips(); paintTable();
+    FT.toast("✓ " + item.name + " added to inventory");
+  });
+
+  paintTiles(); paintChips(); paintTable();
+})();
+</script>
+</body>
+</html>

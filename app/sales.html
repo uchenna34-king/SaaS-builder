@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales &amp; expenses · FarmTrack</title>
+<script>try{var t=localStorage.getItem('farmtrack-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="stylesheet" href="../assets/farmtrack.css">
+</head>
+<body class="app-body">
+<aside class="sidebar"></aside>
+
+<div class="app-main">
+  <header class="topbar">
+    <div>
+      <h1>Sales &amp; expenses</h1>
+      <p class="crumb">Every naira in and out, 2026 wet season</p>
+    </div>
+    <div class="top-actions">
+      <button class="theme-toggle" aria-label="Toggle dark mode">🌙 Dark</button>
+    </div>
+  </header>
+
+  <div class="page">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">
+      <div class="tabs" role="tablist">
+        <button class="tab active" id="tabIn"  role="tab" aria-selected="true">Money in</button>
+        <button class="tab"        id="tabOut" role="tab" aria-selected="false">Money out</button>
+      </div>
+      <label class="field" style="min-width:170px">
+        <select id="monthFilter">
+          <option value="all">All months</option>
+          <option value="0">January</option><option value="1">February</option>
+          <option value="2">March</option><option value="3">April</option>
+          <option value="4">May</option><option value="5">June</option>
+          <option value="6">July</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="tiles" style="grid-template-columns:repeat(3,1fr)">
+      <div class="tile">
+        <div class="tile-accent" id="sumAccent" style="background:var(--series-1)"></div>
+        <div class="t-label" id="sumLabel">Total money in</div>
+        <div class="t-value" id="sumTotal">—</div>
+        <div class="t-delta" id="sumPeriod"></div>
+      </div>
+      <div class="tile">
+        <div class="tile-accent" style="background:var(--series-2)"></div>
+        <div class="t-label">Records</div>
+        <div class="t-value" id="sumCount">—</div>
+        <div class="t-delta" id="sumCountNote"></div>
+      </div>
+      <div class="tile">
+        <div class="tile-accent" style="background:var(--series-5)"></div>
+        <div class="t-label">Average per record</div>
+        <div class="t-value" id="sumAvg">—</div>
+        <div class="t-delta">helps you price better</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h3 id="tblTitle">Sales records</h3>
+          <span class="sub" id="tblSub"></span>
+        </div>
+        <div class="tbl-scroll">
+          <table class="inv-table">
+            <thead id="tblHead"></thead>
+            <tbody id="tblBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-note" id="tblEmpty" hidden>No records for this month yet.</div>
+      </div>
+
+      <div>
+        <div class="card" id="formInCard">
+          <div class="card-head">
+            <h3>Record a sale</h3>
+            <span class="sub">Money in</span>
+          </div>
+          <form class="quick-form" id="saleForm" autocomplete="off">
+            <div class="form-row">
+              <label>Crop / item
+                <select id="sItem"></select>
+              </label>
+              <label>Quantity
+                <input id="sQty" type="number" min="1" value="1" required>
+              </label>
+            </div>
+            <div class="form-row">
+              <label>Amount (₦)
+                <input id="sAmt" type="number" min="0" placeholder="e.g. 45000" required>
+              </label>
+              <label>Buyer / market
+                <input id="sBuyer" type="text" placeholder="e.g. Mile 12 Market">
+              </label>
+            </div>
+            <button class="btn btn-brand" type="submit">＋ Record sale</button>
+          </form>
+        </div>
+
+        <div class="card" id="formOutCard" hidden style="margin-top:0">
+          <div class="card-head">
+            <h3>Record an expense</h3>
+            <span class="sub">Money out</span>
+          </div>
+          <form class="quick-form" id="expForm" autocomplete="off">
+            <div class="form-row">
+              <label>Category
+                <select id="eCat">
+                  <option>Fertiliser</option><option>Seeds</option><option>Labour</option>
+                  <option>Feed</option><option>Transport</option><option>Fuel</option><option>Other</option>
+                </select>
+              </label>
+              <label>Amount (₦)
+                <input id="eAmt" type="number" min="0" placeholder="e.g. 56000" required>
+              </label>
+            </div>
+            <label>What was it for?
+              <input id="eDesc" type="text" placeholder="e.g. NPK 20:10:10 × 4 bags" required>
+            </label>
+            <label>Paid to
+              <input id="eVendor" type="text" placeholder="e.g. Agro-dealer, Zaria">
+            </label>
+            <button class="btn btn-brand" type="submit">＋ Record expense</button>
+          </form>
+        </div>
+
+        <div class="pill-note" style="margin-top:14px">
+          💡 Tip: record sales the same day — market prices move fast.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/farmtrack.js"></script>
+<script>
+(function () {
+  "use strict";
+  FT.shell("sales");
+  FT.initTheme();
+
+  let mode = "in";      /* 'in' | 'out' */
+  let month = "all";
+  const inventory = FT.getInventory();
+
+  /* Populate sale-item select from inventory */
+  const sItem = document.getElementById("sItem");
+  inventory.filter((i) => i.cat !== "Inputs").forEach((i) => {
+    const o = document.createElement("option");
+    o.value = i.name;
+    o.textContent = `${i.name} (${i.unit})`;
+    sItem.appendChild(o);
+  });
+
+  function filtered(records) {
+    if (month === "all") return records;
+    return records.filter((r) => Number(r.d.split("-")[1]) - 1 === Number(month));
+  }
+
+  function paint() {
+    const isIn = mode === "in";
+    document.getElementById("tabIn").classList.toggle("active", isIn);
+    document.getElementById("tabOut").classList.toggle("active", !isIn);
+    document.getElementById("tabIn").setAttribute("aria-selected", isIn);
+    document.getElementById("tabOut").setAttribute("aria-selected", !isIn);
+    document.getElementById("formInCard").hidden = !isIn;
+    document.getElementById("formOutCard").hidden = isIn;
+
+    const records = filtered(isIn ? FT.getSales() : FT.getExpenses())
+      .slice().sort((a, b) => b.d.localeCompare(a.d));
+    const total = records.reduce((s, r) => s + r.amt, 0);
+
+    document.getElementById("sumLabel").textContent = isIn ? "Total money in" : "Total money out";
+    document.getElementById("sumAccent").style.background = isIn ? "var(--series-1)" : "var(--series-3)";
+    document.getElementById("sumTotal").textContent = FT.NGN(total);
+    document.getElementById("sumPeriod").textContent = month === "all" ? "Jan – Jul 2026" : FT.MONTHS_ALL[month] + " 2026";
+    document.getElementById("sumCount").textContent = records.length;
+    document.getElementById("sumCountNote").textContent = isIn ? "sales recorded" : "expenses recorded";
+    document.getElementById("sumAvg").textContent = records.length ? FT.NGN(total / records.length) : "₦0";
+
+    document.getElementById("tblTitle").textContent = isIn ? "Sales records" : "Expense records";
+    document.getElementById("tblSub").textContent = records.length + " record" + (records.length === 1 ? "" : "s");
+    document.getElementById("tblHead").innerHTML = isIn
+      ? "<tr><th>Date</th><th>Item</th><th class='num'>Qty</th><th>Buyer / market</th><th class='num'>Amount</th></tr>"
+      : "<tr><th>Date</th><th>Category</th><th>Details</th><th>Paid to</th><th class='num'>Amount</th></tr>";
+
+    const body = document.getElementById("tblBody");
+    body.innerHTML = "";
+    document.getElementById("tblEmpty").hidden = records.length > 0;
+    records.forEach((r) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = isIn
+        ? `<td class="muted" style="font-size:13px;white-space:nowrap">${FT.fmtDate(r.d)}</td>` +
+          `<td><span class="inv-item"><span class="inv-emoji">${r.emoji || "🧾"}</span>${r.item}</span></td>` +
+          `<td class="num">${r.qty} ${r.unit}</td>` +
+          `<td class="muted" style="font-size:13px">${r.buyer}</td>` +
+          `<td class="num" style="color:var(--status-good)">+${FT.NGN(r.amt)}</td>`
+        : `<td class="muted" style="font-size:13px;white-space:nowrap">${FT.fmtDate(r.d)}</td>` +
+          `<td style="font-weight:700">${r.cat}</td>` +
+          `<td class="muted" style="font-size:13px">${r.desc}</td>` +
+          `<td class="muted" style="font-size:13px">${r.vendor}</td>` +
+          `<td class="num">−${FT.NGN(r.amt)}</td>`;
+      body.appendChild(tr);
+    });
+  }
+
+  document.getElementById("tabIn").addEventListener("click", () => { mode = "in"; paint(); });
+  document.getElementById("tabOut").addEventListener("click", () => { mode = "out"; paint(); });
+  document.getElementById("monthFilter").addEventListener("change", (e) => { month = e.target.value; paint(); });
+
+  document.getElementById("saleForm").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const invItem = inventory.find((i) => i.name === sItem.value) || {};
+    const amt = Number(document.getElementById("sAmt").value) || 0;
+    FT.addSale({
+      d: FT.today(), item: sItem.value, emoji: invItem.emoji || "🧾",
+      qty: Number(document.getElementById("sQty").value) || 1,
+      unit: invItem.unit || "units",
+      buyer: document.getElementById("sBuyer").value.trim() || "Farm gate",
+      amt,
+    });
+    ev.target.reset();
+    document.getElementById("sQty").value = 1;
+    FT.toast("✓ Sale recorded — " + FT.NGN(amt));
+    paint();
+  });
+
+  document.getElementById("expForm").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const amt = Number(document.getElementById("eAmt").value) || 0;
+    FT.addExpense({
+      d: FT.today(),
+      cat: document.getElementById("eCat").value,
+      desc: document.getElementById("eDesc").value.trim(),
+      vendor: document.getElementById("eVendor").value.trim() || "—",
+      amt,
+    });
+    ev.target.reset();
+    FT.toast("✓ Expense recorded — " + FT.NGN(amt));
+    paint();
+  });
+
+  paint();
+})();
+</script>
+</body>
+</html>

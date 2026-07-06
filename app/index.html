@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard · FarmTrack</title>
+<script>try{var t=localStorage.getItem('farmtrack-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="stylesheet" href="../assets/farmtrack.css">
+</head>
+<body class="app-body">
+<aside class="sidebar"></aside>
+
+<div class="app-main">
+  <header class="topbar">
+    <div>
+      <h1>Dashboard</h1>
+      <p class="crumb">2026 wet season · updated just now</p>
+    </div>
+    <div class="top-actions">
+      <button class="theme-toggle" aria-label="Toggle dark mode">🌙 Dark</button>
+      <a class="btn btn-gold btn-sm" href="sales.html">＋ Record sale</a>
+    </div>
+  </header>
+
+  <div class="page">
+    <div class="tiles">
+      <div class="tile">
+        <div class="tile-accent" style="background:var(--series-1)"></div>
+        <div class="t-label">Revenue (season)</div>
+        <div class="t-value" id="tRevenue">—</div>
+        <div class="t-delta up">▲ 18% vs last season</div>
+      </div>
+      <div class="tile">
+        <div class="tile-accent" style="background:var(--series-3)"></div>
+        <div class="t-label">Expenses</div>
+        <div class="t-value" id="tExpenses">—</div>
+        <div class="t-delta down">▲ 6% — fertiliser prices</div>
+      </div>
+      <div class="tile">
+        <div class="tile-accent" style="background:var(--series-2)"></div>
+        <div class="t-label">Profit</div>
+        <div class="t-value" id="tProfit">—</div>
+        <div class="t-delta up">▲ 31% vs last season</div>
+      </div>
+      <div class="tile">
+        <div class="tile-accent" style="background:var(--series-5)"></div>
+        <div class="t-label">Inventory value</div>
+        <div class="t-value" id="tInv">—</div>
+        <div class="t-delta" id="tInvCount"></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h3>Money in vs money out</h3>
+          <span class="sub">Jan – Jun 2026 · ₦ thousands</span>
+        </div>
+        <div class="legend">
+          <span><span class="swatch" style="background:var(--series-1)"></span>Revenue</span>
+          <span><span class="swatch" style="background:var(--series-3)"></span>Expenses</span>
+        </div>
+        <div class="chart-wrap" id="cashflowChart"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Sales by crop</h3>
+          <span class="sub">Season total</span>
+        </div>
+        <div class="chart-wrap" id="cropChart"></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h3>Store inventory</h3>
+          <a href="inventory.html" style="font-size:13px;font-weight:700">View all →</a>
+        </div>
+        <div class="tbl-scroll">
+          <table class="inv-table">
+            <thead>
+              <tr><th>Item</th><th class="num">Qty</th><th class="num">Value</th><th>Status</th></tr>
+            </thead>
+            <tbody id="invBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Recent activity</h3>
+          <a href="sales.html" style="font-size:13px;font-weight:700">All records →</a>
+        </div>
+        <ul class="feed" id="feed"></ul>
+
+        <form class="quick-form" id="quickForm" autocomplete="off" style="margin-top:12px">
+          <div class="form-row">
+            <label>Crop / item
+              <select id="qCrop"></select>
+            </label>
+            <label>Quantity
+              <input id="qQty" type="number" min="1" value="1" required>
+            </label>
+          </div>
+          <div class="form-row">
+            <label>Amount (₦)
+              <input id="qAmt" type="number" min="0" placeholder="e.g. 45000" required>
+            </label>
+            <label>Buyer / market
+              <input id="qBuyer" type="text" placeholder="e.g. Mile 12 Market">
+            </label>
+          </div>
+          <button class="btn btn-brand" type="submit">＋ Record sale</button>
+          <div class="form-note" id="formNote">Saved on this device — works offline.</div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/farmtrack.js"></script>
+<script>
+(function () {
+  "use strict";
+  FT.shell("dashboard");
+  FT.initTheme();
+
+  const inventory = FT.getInventory();
+
+  function paintTiles() {
+    const sales = FT.getSales(), expenses = FT.getExpenses();
+    const rev = sales.reduce((s, r) => s + r.amt, 0);
+    const exp = expenses.reduce((s, r) => s + r.amt, 0);
+    const invVal = inventory.reduce((s, i) => s + i.qty * i.price, 0);
+    document.getElementById("tRevenue").textContent = FT.NGNshort(rev);
+    document.getElementById("tExpenses").textContent = FT.NGNshort(exp);
+    document.getElementById("tProfit").textContent = FT.NGNshort(rev - exp);
+    document.getElementById("tInv").textContent = FT.NGNshort(invVal);
+    document.getElementById("tInvCount").textContent = inventory.filter((i) => i.qty > 0).length + " items in store";
+  }
+
+  function drawCharts() {
+    FT.lineChart(document.getElementById("cashflowChart"), {
+      labels: FT.MONTHS,
+      series: [
+        { name: "Revenue",  colorVar: "--series-1", data: FT.monthlyTotals(FT.getSales()), fill: true },
+        { name: "Expenses", colorVar: "--series-3", data: FT.monthlyTotals(FT.getExpenses()) },
+      ],
+      ariaLabel: "Line chart of monthly revenue and expenses, January to June 2026",
+    });
+    FT.hbars(document.getElementById("cropChart"),
+      FT.sumBy(FT.getSales(), "item").slice(0, 5),
+      { colorVar: "--series-1", ariaLabel: "Bar chart of season sales by crop" });
+  }
+
+  /* Inventory preview: 4 highest-value rows */
+  const invBody = document.getElementById("invBody");
+  inventory
+    .slice()
+    .sort((a, b) => b.qty * b.price - a.qty * a.price)
+    .slice(0, 4)
+    .forEach((it) => {
+      const status = it.qty === 0 ? ["stock-out", "Out of stock"]
+                   : it.qty <= 6  ? ["stock-low", "Running low"]
+                   : ["stock-ok", "In stock"];
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        `<td><span class="inv-item"><span class="inv-emoji">${it.emoji}</span>` +
+        `<span>${it.name}<br><span class="inv-sub">${it.unit}</span></span></span></td>` +
+        `<td class="num">${it.qty}</td>` +
+        `<td class="num">${FT.NGN(it.qty * it.price)}</td>` +
+        `<td><span class="stock-pill ${status[0]}">${status[1]}</span></td>`;
+      invBody.appendChild(tr);
+    });
+
+  /* Activity feed: latest 5 movements */
+  const feed = document.getElementById("feed");
+  function paintFeed() {
+    feed.innerHTML = "";
+    const moves = FT.getSales().map((s) => ({
+        d: s.d, icon: s.emoji || "🧾", title: `Sold ${s.qty} ${s.unit} of ${s.item.toLowerCase()}`,
+        meta: `${s.buyer} · ${FT.fmtDate(s.d)}`, amt: s.amt, dir: "in" }))
+      .concat(FT.getExpenses().map((e) => ({
+        d: e.d, icon: "🧪", title: e.desc, meta: `${e.vendor} · ${FT.fmtDate(e.d)}`, amt: -e.amt, dir: "out" })))
+      .sort((a, b) => b.d.localeCompare(a.d))
+      .slice(0, 5);
+    moves.forEach((a) => {
+      const li = document.createElement("li");
+      li.innerHTML =
+        `<span class="f-icon">${a.icon}</span>` +
+        `<span class="f-body"><span class="f-title">${a.title}</span><br><span class="f-meta">${a.meta}</span></span>` +
+        `<span class="f-amt ${a.dir}">${a.amt >= 0 ? "+" : "−"}${FT.NGN(Math.abs(a.amt))}</span>`;
+      feed.appendChild(li);
+    });
+  }
+
+  /* Quick-add form */
+  const cropSel = document.getElementById("qCrop");
+  inventory.filter((i) => i.cat !== "Inputs").forEach((i) => {
+    const o = document.createElement("option");
+    o.value = i.name;
+    o.textContent = `${i.name} (${i.unit})`;
+    cropSel.appendChild(o);
+  });
+  const form = document.getElementById("quickForm");
+  const note = document.getElementById("formNote");
+  form.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const item = cropSel.value;
+    const invItem = inventory.find((i) => i.name === item) || {};
+    const qty = Number(document.getElementById("qQty").value) || 1;
+    const amt = Number(document.getElementById("qAmt").value) || 0;
+    const buyer = document.getElementById("qBuyer").value.trim() || "Farm gate";
+    FT.addSale({ d: FT.today(), item, emoji: invItem.emoji || "🧾", qty, unit: invItem.unit || "units", buyer, amt });
+    paintTiles(); paintFeed(); drawCharts();
+    form.reset();
+    document.getElementById("qQty").value = 1;
+    note.textContent = "✓ Sale recorded — " + FT.NGN(amt);
+    note.classList.add("saved");
+    setTimeout(() => { note.textContent = "Saved on this device — works offline."; note.classList.remove("saved"); }, 3200);
+  });
+
+  paintTiles(); paintFeed(); drawCharts();
+  window.addEventListener("ft:theme", drawCharts);
+})();
+</script>
+</body>
+</html>
